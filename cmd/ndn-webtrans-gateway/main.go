@@ -1,3 +1,4 @@
+// Command ndn-webtrans-gateway accepts HTTP/3 WebTransport datagrams and forwards them to a UDP server.
 package main
 
 import (

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="100" height="100">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="52%" style="stop-color:#ff7f00"/>
+      <stop offset="62%" style="stop-color:#2596be"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="100" height="100" rx="10" ry="10" fill="url(#grad1)"/>
+  <text x="5" y="40" fill="#ffffff" style="font:30px sans-serif">NDN</text>
+  <text x="95" y="70" text-anchor="end" fill="#ffffff" style="font:20px sans-serif">web</text>
+  <text x="95" y="90" text-anchor="end" fill="#ffffff" style="font:20px sans-serif">trans</text>
+</svg>
