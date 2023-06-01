@@ -45,7 +45,7 @@ func main() {
 		TLSKey:     webtransport.CertFile{Path: *flagKey},
 		QuicConfig: &webtransport.QuicConfig{
 			MaxIdleTimeout:          60 * time.Second,
-			KeepAlive:               true,
+			KeepAlivePeriod:         30 * time.Second,
 			DisablePathMTUDiscovery: true,
 		},
 	}

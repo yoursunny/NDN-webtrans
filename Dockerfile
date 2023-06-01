@@ -1,4 +1,4 @@
-FROM golang:1.18 AS build
+FROM golang:1.19 AS build
 WORKDIR /app
 COPY . .
 RUN env CGO_ENABLED=0 GOBIN=/build go install ./cmd/...
