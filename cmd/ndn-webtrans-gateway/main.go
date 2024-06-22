@@ -2,13 +2,14 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/adriancable/webtransport-go"
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
+	"github.com/quic-go/webtransport-go"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -34,23 +35,28 @@ var (
 	flagRouter = flag.String("router", "127.0.0.1:6363", "router address and port")
 )
 
+var server *webtransport.Server
+
 func main() {
 	flag.Parse()
 
 	http.HandleFunc("/ndn", handleGateway)
 
-	server := &webtransport.Server{
-		ListenAddr: *flagListen,
-		TLSCert:    webtransport.CertFile{Path: *flagCert},
-		TLSKey:     webtransport.CertFile{Path: *flagKey},
-		QuicConfig: &webtransport.QuicConfig{
-			MaxIdleTimeout:          60 * time.Second,
-			KeepAlivePeriod:         30 * time.Second,
-			DisablePathMTUDiscovery: true,
+	server = &webtransport.Server{
+		H3: http3.Server{
+			Addr: *flagListen,
+			QUICConfig: &quic.Config{
+				MaxIdleTimeout:          60 * time.Second,
+				KeepAlivePeriod:         30 * time.Second,
+				DisablePathMTUDiscovery: true,
+			},
+		},
+		CheckOrigin: func(r *http.Request) bool {
+			return true
 		},
 	}
 
-	if e := server.Run(context.Background()); e != nil {
+	if e := server.ListenAndServeTLS(*flagCert, *flagKey); e != nil {
 		logger.Fatal("server.Run error", zap.Error(e))
 	}
 }

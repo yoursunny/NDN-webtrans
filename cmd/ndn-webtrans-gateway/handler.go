@@ -4,12 +4,10 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/adriancable/webtransport-go"
 	"go.uber.org/zap"
 )
 
 func handleGateway(rw http.ResponseWriter, r *http.Request) {
-	session := r.Body.(*webtransport.Session)
 	logEntry := logger.With(
 		zap.String("origin", r.Header.Get("origin")),
 		zap.String("client", r.RemoteAddr),
@@ -18,22 +16,27 @@ func handleGateway(rw http.ResponseWriter, r *http.Request) {
 	conn, e := (&net.Dialer{}).DialContext(r.Context(), "udp", *flagRouter)
 	if e != nil {
 		logEntry.Warn("DialUDP error", zap.Error(e))
-		session.RejectSession(504)
+		rw.WriteHeader(504)
 		return
 	}
 	defer conn.Close()
 	logEntry = logEntry.With(zap.Stringer("local", conn.LocalAddr()))
 
+	session, e := server.Upgrade(rw, r)
+	if e != nil {
+		logEntry.Warn("Upgrade error", zap.Error(e))
+		rw.WriteHeader(500)
+		return
+	}
+
 	logEntry.Info("accept session")
-	session.AcceptSession()
-	defer session.CloseSession()
 
 	crPkts, rcPkts := 0, 0
 	finish := make(chan error, 1)
 
 	go func() {
 		for {
-			msg, e := session.ReceiveMessage(session.Context())
+			msg, e := session.ReceiveDatagram(session.Context())
 			if e != nil {
 				finish <- e
 				break
@@ -52,7 +55,7 @@ func handleGateway(rw http.ResponseWriter, r *http.Request) {
 				break
 			}
 			rcPkts++
-			session.SendMessage(buf[:n])
+			session.SendDatagram(buf[:n])
 		}
 	}()
 
