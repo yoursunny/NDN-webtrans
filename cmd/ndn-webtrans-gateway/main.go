@@ -2,6 +2,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"net/http"
 	"os"
@@ -35,28 +36,44 @@ var (
 	flagRouter = flag.String("router", "127.0.0.1:6363", "router address and port")
 )
 
-var server *webtransport.Server
+var wtServer *webtransport.Server
 
 func main() {
 	flag.Parse()
 
-	http.HandleFunc("/ndn", handleGateway)
+	cert, e := tls.LoadX509KeyPair(*flagCert, *flagKey)
+	if e != nil {
+		logger.Fatal("tls.LoadX509KeyPair error", zap.Error(e))
+	}
+	logger.Info("certificate loaded",
+		zap.Strings("dns-names", cert.Leaf.DNSNames),
+		zap.Time("not-before", cert.Leaf.NotBefore),
+		zap.Time("not-after", cert.Leaf.NotAfter),
+	)
 
-	server = &webtransport.Server{
-		H3: http3.Server{
-			Addr: *flagListen,
-			QUICConfig: &quic.Config{
-				MaxIdleTimeout:          60 * time.Second,
-				KeepAlivePeriod:         30 * time.Second,
-				DisablePathMTUDiscovery: true,
-			},
+	h3Server := &http3.Server{
+		Addr: *flagListen,
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{http3.NextProtoH3},
 		},
+		QUICConfig: &quic.Config{
+			MaxIdleTimeout:          60 * time.Second,
+			KeepAlivePeriod:         30 * time.Second,
+			DisablePathMTUDiscovery: true,
+		},
+	}
+	webtransport.ConfigureHTTP3Server(h3Server)
+	wtServer = &webtransport.Server{
+		H3: h3Server,
 		CheckOrigin: func(r *http.Request) bool {
 			return true
 		},
 	}
 
-	if e := server.ListenAndServeTLS(*flagCert, *flagKey); e != nil {
+	http.HandleFunc("/ndn", handleGateway)
+
+	if e := wtServer.ListenAndServe(); e != nil {
 		logger.Fatal("server.Run error", zap.Error(e))
 	}
 }

@@ -22,7 +22,7 @@ func handleGateway(rw http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	logEntry = logEntry.With(zap.Stringer("local", conn.LocalAddr()))
 
-	session, e := server.Upgrade(rw, r)
+	session, e := wtServer.Upgrade(rw, r)
 	if e != nil {
 		logEntry.Warn("Upgrade error", zap.Error(e))
 		rw.WriteHeader(500)
